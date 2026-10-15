@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Form Hitung Box</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: tema biru dongker tunggal (aksen hijau lime KAME). Pita header bernama perusahaan dengan
+   strip CMYK, lembar form di kiri, kartu ringkasan harga bergaris putus ala dieline di kanan. */
+:root {
+  --bg: #0a1b36;
+  --surface: #11284b;
+  --surface-2: #163259;
+  --field: #0b2040;
+  --ink: #e9eff9;
+  --muted: #9fb3ce;
+  --line: #2b4772;
+  --line-soft: #1f3a60;
+  --accent: #a4e830;
+  --accent-ink: #0a1b36;
+  --accent-soft: rgba(164, 232, 48, .12);
+  --cut: #ff7a6b;
+  --cut-soft: rgba(255, 122, 107, .14);
+  --hl: #a4e830;
+  --hl-ink: #0a1b36;
+  --good: #3fd9a8;
+  --brand: #071428;
+  --brand-ink: #f2f6fa;
+  --f-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --f-body: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 var(--f-body);
+}
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+.in {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---------- header ---------- */
+.top { background: var(--brand); color: var(--brand-ink); border-bottom: 2px solid var(--accent); }
+.top .in { padding-block: 18px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cmyk { display: grid; grid-template-columns: repeat(4, 12px); gap: 2px; align-self: stretch; align-content: center; }
+.cmyk i { display: block; height: 26px; }
+.cmyk i:nth-child(1) { background: #00a6e0; }
+.cmyk i:nth-child(2) { background: #e4007c; }
+.cmyk i:nth-child(3) { background: #ffe600; }
+.cmyk i:nth-child(4) { background: #1b1b1b; box-shadow: inset 0 0 0 1px #4a5560; }
+.brand { min-width: 0; }
+.brand h1 {
+  margin: 0;
+  font: 800 clamp(1.3rem, 3.4vw, 2rem)/1.05 var(--f-display);
+  letter-spacing: .045em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.brand p {
+  margin: 5px 0 0;
+  font-size: 11.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  opacity: .72;
+}
+
+/* ---------- layout ---------- */
+.wrap { padding-block: 20px 28px; }
+.note {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: var(--accent-soft);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--ink);
+}
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (min-width: 980px) {
+  .grid { grid-template-columns: minmax(0, 1fr) 372px; gap: 24px; }
+  .sum { position: sticky; top: max(16px, env(safe-area-inset-top, 0px)); }
+  .dock { display: none !important; }
+}
+
+.sheet {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  min-width: 0;
+}
+.sec { padding: 20px 22px; min-width: 0; }
+.sec + .sec { border-top: 1.5px dashed var(--line); }
+.sec h2 {
+  margin: 0 0 14px;
+  font: 700 11.5px/1.2 var(--f-body);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.sec-head h2 { margin: 0; }
+.sub { margin: 14px 0 8px; font-size: 12px; color: var(--muted); font-weight: 500; }
+
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: 12px 14px; }
+.f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.f.wide { grid-column: span 2; }
+@media (max-width: 480px) { .f.wide { grid-column: auto; } }
+.f > label, .lbl { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+
+input, select {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+input[type="number"], .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+input.num { text-align: right; }
+input::placeholder { color: color-mix(in srgb, var(--muted) 70%, transparent); }
+input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.money { position: relative; }
+.money::before {
+  content: 'Rp';
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  font: 500 12px var(--f-mono); color: var(--muted); pointer-events: none;
+}
+.money input { padding-left: 34px; text-align: right; }
+
+/* ---------- kebutuhan bahan ---------- */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 10px; margin-top: 16px; }
+.stat { padding: 9px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface-2); min-width: 0; }
+.stat.hl { background: var(--hl); border-color: transparent; color: var(--hl-ink); }
+.stat dt { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.stat dd { margin: 2px 0 0; font: 600 20px/1.2 var(--f-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* ---------- rincian biaya ---------- */
+.rows { border-top: 1px solid var(--line); }
+.row, .rhead {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr) 8.6rem 6.6rem;
+  gap: 6px 14px;
+  align-items: start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.rhead { padding: 8px 0; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-bottom-color: var(--line); }
+.rhead span:nth-child(3), .rhead span:nth-child(4) { text-align: right; }
+.r-label { font-weight: 600; padding-top: 8px; }
+.r-ctl { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; min-width: 0; }
+.r-ctl select { width: auto; min-width: 9rem; flex: 1 1 9rem; }
+.r-ctl .mini { width: 4.6rem; flex: 0 0 4.6rem; }
+.r-ctl .money { flex: 1 1 11rem; }
+.r-ctl .times { color: var(--muted); }
+.r-rumus { flex-basis: 100%; font: 400 11.5px/1.35 var(--f-mono); color: var(--muted); overflow-wrap: anywhere; }
+.r-rumus.warn { color: var(--cut); font-family: var(--f-body); }
+.r-amt { text-align: right; padding-top: 7px; min-width: 0; }
+.r-amt b { display: block; font: 600 14.5px/1.3 var(--f-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.r-amt .tag {
+  display: inline-block; margin-top: 2px; padding: 0 6px;
+  font: 600 10px/16px var(--f-body); letter-spacing: .08em; text-transform: uppercase; font-style: normal;
+  background: var(--cut-soft); color: var(--cut); border-radius: 2px;
+}
+.bar { display: block; height: 3px; margin-top: 5px; background: var(--line-soft); border-radius: 1px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+.r-man { min-width: 0; }
+.r-man input { height: 34px; font-size: 13px; }
+.row.off .r-label, .row.off .r-amt b { color: var(--muted); }
+.tot { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: baseline; padding: 12px 0 0; }
+.tot .k { font-weight: 600; }
+.tot .v { text-align: right; font: 700 20px/1.2 var(--f-mono); font-variant-numeric: tabular-nums; }
+.tot .v.s { font-size: 15px; font-weight: 600; color: var(--muted); }
+
+@media (max-width: 719px) {
+  .sec { padding: 18px 16px; }
+  .rhead { display: none; }
+  .row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label amt" "ctl ctl" "man man"; }
+  .r-label { grid-area: label; padding-top: 0; }
+  .r-amt { grid-area: amt; padding-top: 0; min-width: 7rem; }
+  .r-ctl { grid-area: ctl; }
+  .r-man { grid-area: man; }
+}
+
+/* ---------- ringkasan ---------- */
+.sumcard {
+  background: var(--surface);
+  border: 1.5px dashed var(--accent);
+  border-radius: 3px;
+  padding: 18px 20px;
+}
+.sumcard h2 { margin: 0 0 12px; font: 700 11.5px/1.2 var(--f-body); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+.blk + .blk { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+.blk .k { font-size: 12px; color: var(--muted); }
+.blk .big { font: 800 clamp(1.7rem, 4vw, 2.15rem)/1.1 var(--f-display); letter-spacing: -.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.blk .per { font: 500 13px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.blk.mid .big { font-size: 1.25rem; font-weight: 700; }
+.blk.final { background: var(--hl); color: var(--hl-ink); margin: 14px -20px 0; padding: 12px 20px; border-top: 0; }
+.blk.final .k, .blk.final .per { color: var(--hl-ink); opacity: .8; }
+.warns { margin: 12px 0 0; padding: 10px 12px; background: var(--cut-soft); color: var(--ink); border-radius: 3px; font-size: 12.5px; }
+.warns p { margin: 0; }
+.warns p + p { margin-top: 6px; }
+.chip { display: inline-block; margin-top: 12px; padding: 2px 8px; font-size: 11.5px; background: var(--accent-soft); border-radius: 2px; }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.btn {
+  height: 36px; padding: 0 14px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 3px; font-weight: 500;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.pri { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.pri:hover { filter: brightness(1.08); }
+.btn.arm { border-color: var(--cut); color: var(--cut); }
+.btn.sm { height: 30px; padding: 0 10px; font-size: 12.5px; }
+.status { min-height: 20px; margin: 10px 0 0; font-size: 12.5px; color: var(--good); }
+.manualcopy { width: 100%; height: 7rem; margin-top: 8px; padding: 8px; font: 12px/1.4 var(--f-mono); border: 1px solid var(--line); border-radius: 3px; background: var(--field); resize: vertical; }
+
+/* ---------- riwayat & tarif ---------- */
+details.panel { margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 3px; }
+details.panel > summary { cursor: pointer; padding: 14px 22px; font: 700 11.5px/1.2 var(--f-body); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+details.panel[open] > summary { border-bottom: 1.5px dashed var(--line); }
+.panel .body { padding: 18px 22px 22px; }
+.hist-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.hist-tools input { flex: 1 1 14rem; width: auto; }
+.hist { overflow-x: auto; }
+.hist table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.hist th { text-align: left; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 500; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); }
+.hist td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+.hist td.r, .hist th.r { text-align: right; }
+.hist td.m { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hist td.act { white-space: nowrap; text-align: right; padding-right: 0; }
+.empty { margin: 0; color: var(--muted); }
+.tgrp { margin: 0 0 18px; }
+.tgrp h3 { margin: 0 0 8px; font-size: 12.5px; font-weight: 600; }
+.tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 10px 14px; }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0 0 14px; }
+
+/* ---------- dock (HP) ---------- */
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: var(--hl); color: var(--hl-ink); border-top: 1px solid var(--line);
+}
+.dock .k { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; }
+.dock .v { font: 700 18px var(--f-mono); font-variant-numeric: tabular-nums; }
+@media (max-width: 979px) { .wrap { padding-bottom: 84px; } }
+
+@media print {
+  body { background: #fff; color: #000; font-size: 12px; }
+  .top { background: #fff; color: #000; border-bottom: 2px solid #000; }
+  .dock, .acts, .status, .manualcopy, details.panel, .rhead .noprint, .r-man, .note, .sec-head select { display: none !important; }
+  .grid { grid-template-columns: 1fr; }
+  .sum { position: static; }
+  .sheet, .sumcard { border-color: #999; break-inside: avoid; }
+  .blk.final { background: #eee; color: #000; }
+  .stat.hl { background: #eee; color: #000; }
+  .rhead, .row { grid-template-columns: 9rem minmax(0, 1fr) 8rem; }
+  .rhead span:nth-child(4) { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bar i { transition: width .2s ease; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="in">
+    <div class="cmyk" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="brand">
+      <h1>Mitra Perkasa Kemasindo</h1>
+      <p>Form estimasi harga box</p>
+    </div>
+  </div>
+</header>
+
+<main class="wrap in">
+  <p class="note" id="banner" hidden>Form terisi contoh dari file Excel (BOX JARVIN). Ubah angkanya langsung, atau klik Form baru untuk mengosongkan.</p>
+
+  <div class="grid">
+    <div class="sheet">
+
+      <section class="sec" aria-labelledby="h-order">
+        <h2 id="h-order">Data order</h2>
+        <div class="fields">
+          <div class="f wide"><label for="f-customer">Customer</label><input id="f-customer" type="text" data-k="customer" autocomplete="off"></div>
+          <div class="f wide"><label for="f-barang">Nama barang</label><input id="f-barang" type="text" data-k="barang" autocomplete="off"></div>
+          <div class="f"><label for="f-tanggal">Tanggal</label><input id="f-tanggal" type="date" data-k="tanggal"></div>
+          <div class="f"><label for="f-qty">Quantity (pcs)</label><input id="f-qty" type="number" step="any" min="0" inputmode="numeric" data-k="qty"></div>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="h-bahan">
+        <h2 id="h-bahan">Bahan dan ukuran</h2>
+        <div class="fields">
+          <div class="f"><label for="f-bahan">Bahan</label><select id="f-bahan" data-k="bahan" data-list="bahan"></select></div>
+          <div class="f"><label for="f-gsm">Gramatur (gsm)</label><select id="f-gsm" data-k="gsm" data-list="gsm"></select></div>
+          <div class="f"><label for="f-warna">Warna</label><select id="f-warna" data-k="warna" data-list="warna"></select></div>
+        </div>
+        <p class="sub">Ukuran naik cetak</p>
+        <div class="fields">
+          <div class="f"><label for="f-panjang">Panjang (cm)</label><input id="f-panjang" type="number" step="any" min="0" inputmode="decimal" data-k="panjang"></div>
+          <div class="f"><label for="f-lebar">Lebar (cm)</label><input id="f-lebar" type="number" step="any" min="0" inputmode="decimal" data-k="lebar"></div>
+          <div class="f"><label for="f-mata">Jumlah mata</label><input id="f-mata" type="number" step="any" min="0" inputmode="numeric" data-k="mata"></div>
+        </div>
+        <p class="sub">Plano dan cetakan</p>
+        <div class="fields">
+          <div class="f"><label for="f-plano">Ukuran plano (cm)</label><select id="f-plano" data-k="plano" data-list="plano"></select></div>
+          <div class="f"><label for="f-qtyPlano">Qty / plano</label><input id="f-qtyPlano" type="number" step="any" min="0" inputmode="numeric" data-k="qtyPlano"></div>
+          <div class="f"><label for="f-tinggi">Tinggi cetakan</label><input id="f-tinggi" type="number" step="any" min="0" inputmode="decimal" data-k="tinggi"></div>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="h-kebutuhan">
+        <h2 id="h-kebutuhan">Kebutuhan bahan</h2>
+        <div class="fields">
+          <div class="f"><label for="f-hargaRim">Harga bahan per rim</label><span class="money"><input id="f-hargaRim" type="number" step="any" min="0" inputmode="numeric" data-k="hargaRim"></span></div>
+          <div class="f"><label for="f-insheet">Insheet (lembar)</label><input id="f-insheet" type="number" step="any" min="0" inputmode="numeric" data-k="insheet"></div>
+        </div>
+        <dl class="stats" style="margin-bottom:0">
+          <div class="stat"><dt>Lembar cetak</dt><dd data-o="lembar">—</dd></div>
+          <div class="stat hl"><dt>Total include inside</dt><dd data-o="include">—</dd></div>
+          <div class="stat hl"><dt>Kebutuhan lembar bahan</dt><dd data-o="lembarBahan">—</dd></div>
+          <div class="stat"><dt>Jumlah rim</dt><dd data-o="rim">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="sec" aria-labelledby="h-biaya">
+        <h2 id="h-biaya">Rincian biaya dus atas</h2>
+        <div class="rhead"><span>Biaya</span><span>Pilihan</span><span>Jumlah</span><span>Ubah manual</span></div>
+        <div class="rows" id="rows-atas"></div>
+        <div class="tot"><span class="k">Estimasi harga, total</span><span class="v" data-o="total">—</span></div>
+        <div class="tot"><span class="k">Satuan (per pcs)</span><span class="v s" data-o="satuan">—</span></div>
+      </section>
+
+      <section class="sec" aria-labelledby="h-bawah">
+        <div class="sec-head">
+          <h2 id="h-bawah">Dus bagian bawah (opsional)</h2>
+          <select id="f-bawahOn" data-k="bawahOn" data-bool style="width:auto;min-width:11rem" aria-label="Hitung dus bagian bawah">
+            <option value="0">Tidak dihitung</option>
+            <option value="1">Dihitung</option>
+          </select>
+        </div>
+        <div id="bawah-body" hidden>
+          <div class="rhead"><span>Biaya</span><span>Pilihan</span><span>Jumlah</span><span>Ubah manual</span></div>
+          <div class="rows" id="rows-bawah"></div>
+          <div class="tot"><span class="k">Estimasi harga dus bawah, total</span><span class="v" data-o="btotal">—</span></div>
+          <div class="tot"><span class="k">Satuan (per pcs)</span><span class="v s" data-o="bsatuan">—</span></div>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="sum" aria-label="Ringkasan harga">
+      <div class="sumcard">
+        <h2>Ringkasan harga</h2>
+
+        <div class="blk" id="blk-atas">
+          <div class="k" id="k-atas">Estimasi harga</div>
+          <div class="big" data-o="s-total">—</div>
+          <div class="per" data-o="s-per">—</div>
+        </div>
+        <div class="blk mid" id="blk-bawah" hidden>
+          <div class="k">Dus bagian bawah</div>
+          <div class="big" data-o="s-btotal">—</div>
+          <div class="per" data-o="s-bper">—</div>
+        </div>
+        <div class="blk final" id="blk-final" hidden>
+          <div class="k">Total harga atas + bawah</div>
+          <div class="big" data-o="s-grand">—</div>
+          <div class="per" data-o="s-gper">—</div>
+        </div>
+
+        <div class="warns" id="warns" hidden></div>
+        <span class="chip" id="chip-tarif" hidden>Tarif diubah dari bawaan Excel</span>
+
+        <div class="acts">
+          <button type="button" class="btn pri" id="btn-save">Simpan estimasi</button>
+          <button type="button" class="btn" id="btn-copy">Salin ringkasan</button>
+          <button type="button" class="btn" id="btn-new">Form baru</button>
+        </div>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <textarea class="manualcopy" id="manualcopy" readonly hidden aria-label="Teks ringkasan untuk disalin manual"></textarea>
+      </div>
+    </aside>
+  </div>
+
+  <details class="panel" id="panel-riwayat">
+    <summary>Riwayat estimasi <span id="hist-count"></span></summary>
+    <div class="body">
+      <div class="hist-tools">
+        <input id="hist-q" type="search" placeholder="Cari customer atau nama barang" aria-label="Cari riwayat">
+        <button type="button" class="btn sm" id="btn-hist-copy">Salin semua untuk Excel</button>
+      </div>
+      <div class="hist" id="hist-list"></div>
+      <p class="hint" style="margin:12px 0 0">Riwayat tersimpan di browser ini saja. Di komputer atau browser lain, riwayatnya kosong.</p>
+    </div>
+  </details>
+
+  <details class="panel" id="panel-tarif">
+    <summary>Tarif dan rumus</summary>
+    <div class="body">
+      <p class="hint">Angka bawaan diambil dari rumus di file Excel. Ubah di sini kalau harga berubah. Perubahan tersimpan di browser ini saja.</p>
+      <div id="tarif-body"></div>
+      <button type="button" class="btn sm" id="btn-tarif-reset">Kembalikan ke bawaan Excel</button>
+    </div>
+  </details>
+</main>
+
+<div class="dock" aria-live="polite">
+  <span class="k" id="dock-k">Total estimasi</span>
+  <span class="v" id="dock-v">—</span>
+</div>
+
+<script>
+(function () {
+'use strict';
+/* Inti perhitungan: meniru rumus di FORM_HITUNG_BOX.xlsx (sheet FORM ESTIMASI + FORMULA) */
+var TARIF_DEFAULT = {
+  dasarLembar: 5000,
+  cetak: { GTO: { dasar: 500000, perWarna: 12.5 }, SORM: { dasar: 600000, perWarna: 25 } },
+  pond: { GTO: { dasar: 150000, perLembar: 25 }, SORM: { dasar: 250000, perLembar: 25 } },
+  varnish: { UV: 0.07, BIASA: 0.035 },
+  laminating: { GLOSSY: 0.16, DOFT: 0.2 },
+  hotstamp: 0.8,
+  embos: 0.7,
+  spotuv: 0.25,
+  lem: { UV: 1.5, LAMINATING: 2 },
+  bawah: { pond: 25, pisau: 300, varnish: 0.07, lem: 100, pembagiBahan: 16 }
+};
+
+function cloneTarif(t) { return JSON.parse(JSON.stringify(t)); }
+
+/* gabungkan tarif tersimpan dengan bawaan, supaya field baru tidak hilang */
+function mergeTarif(base, extra) {
+  var out = cloneTarif(base);
+  (function walk(o, e) {
+    if (!e || typeof e !== 'object') return;
+    Object.keys(o).forEach(function (k) {
+      if (typeof o[k] === 'object' && o[k] !== null) walk(o[k], e[k]);
+      else if (typeof e[k] === 'number' && isFinite(e[k])) o[k] = e[k];
+    });
+  })(out, extra);
+  return out;
+}
+
+function hitung(s, T) {
+  T = T || TARIF_DEFAULT;
+  var n = function (v) { var x = parseFloat(v); return isFinite(x) ? x : 0; };
+  var fmt = function (x, d) {
+    return Number(x).toLocaleString('id-ID', { maximumFractionDigits: d === undefined ? 2 : d });
+  };
+
+  var qty = n(s.qty), mata = n(s.mata), qp = n(s.qtyPlano);
+  var P = n(s.panjang), L = n(s.lebar), warna = n(s.warna);
+  var insheet = n(s.insheet), harga = n(s.hargaRim), tinggi = n(s.tinggi);
+  var valid = qty > 0 && mata > 0 && qp > 0;
+  var warnings = [];
+
+  var G = valid ? qty / mata : 0;      // lembar cetak (G13)
+  var I = G + insheet;                 // total include inside (I13)
+  var rim = valid ? I / qp / 500 : 0;  // jumlah rim (E23)
+  var lembarBahan = rim * 500;         // kebutuhan lembar bahan (I23)
+  var luas = P * L;
+
+  var manual = s.manual || {};
+  function line(key, label, auto, rumus, opt) {
+    opt = opt || {};
+    var m = manual[key];
+    var hasManual = !opt.noManual && m !== undefined && m !== null && m !== '' && isFinite(parseFloat(m));
+    var used = hasManual ? parseFloat(m) : auto;
+    return { key: key, label: label, auto: auto, rumus: rumus || '', manual: hasManual ? parseFloat(m) : null, used: used, input: !!opt.input, noFormula: !!opt.noFormula };
+  }
+
+  var lines = [];
+  // 1. biaya bahan
+  lines.push(line('bahan', 'Biaya bahan', rim * harga,
+    valid ? fmt(rim, 4) + ' rim × Rp ' + fmt(harga, 0) : ''));
+  // 2. plate / film
+  lines.push(line('platefilm', 'Plate/film & lain-lain', n(s.platefilm), '', { input: true, noManual: true }));
+  // 3. biaya cetak
+  var cetak = 0, cetakR = '';
+  if (s.mesin === 'GTO' || s.mesin === 'SORM') {
+    var c = T.cetak[s.mesin];
+    cetak = c.dasar + (G - T.dasarLembar) * warna * c.perWarna;
+    cetakR = fmt(c.dasar, 0) + ' + (' + fmt(G, 2) + ' − ' + fmt(T.dasarLembar, 0) + ') × ' + fmt(warna, 0) + ' warna × ' + fmt(c.perWarna, 2);
+    if (cetak < 0) { warnings.push('Rumus biaya cetak ' + s.mesin + ' menghasilkan angka negatif (lembar terlalu sedikit untuk ' + fmt(warna, 0) + ' warna). Dihitung Rp 0, silakan isi manual.'); cetak = 0; }
+  }
+  lines.push(line('cetak', 'Biaya cetak', cetak, cetakR));
+  // 4. varnish (pakai lembar cetak, tanpa insheet, seperti di Excel)
+  var vr = T.varnish[s.varnish];
+  lines.push(line('varnish', 'Biaya varnish', vr ? luas * vr * G : 0,
+    vr ? fmt(P, 2) + ' × ' + fmt(L, 2) + ' × ' + fmt(vr, 3) + ' × ' + fmt(G, 2) + ' lembar' : ''));
+  // 5. laminating
+  var lr = T.laminating[s.lam];
+  lines.push(line('lam', 'Biaya laminating', lr ? luas * lr * I : 0,
+    lr ? fmt(P, 2) + ' × ' + fmt(L, 2) + ' × ' + fmt(lr, 3) + ' × ' + fmt(I, 2) + ' lembar' : ''));
+  // 6. hot stamp
+  var hs = s.hotstamp || {};
+  lines.push(line('hotstamp', 'Biaya hot stamp', hs.on ? n(hs.p) * n(hs.l) * T.hotstamp * I : 0,
+    hs.on ? fmt(n(hs.p), 2) + ' × ' + fmt(n(hs.l), 2) + ' × ' + fmt(T.hotstamp, 3) + ' × ' + fmt(I, 2) + ' lembar' : ''));
+  // 7. embos
+  var eb = s.embos || {};
+  lines.push(line('embos', 'Biaya embos', eb.on ? n(eb.p) * n(eb.l) * T.embos * I : 0,
+    eb.on ? fmt(n(eb.p), 2) + ' × ' + fmt(n(eb.l), 2) + ' × ' + fmt(T.embos, 3) + ' × ' + fmt(I, 2) + ' lembar' : ''));
+  // 8. spot uv
+  lines.push(line('spotuv', 'Biaya spot UV', s.spotuv ? luas * T.spotuv * I : 0,
+    s.spotuv ? fmt(P, 2) + ' × ' + fmt(L, 2) + ' × ' + fmt(T.spotuv, 3) + ' × ' + fmt(I, 2) + ' lembar' : ''));
+  // 9. pisau (input langsung)
+  lines.push(line('pisau', 'Biaya pisau', n(s.pisau), '', { input: true, noManual: true }));
+  // 10. pond
+  var pd = T.pond[s.pond];
+  lines.push(line('pond', 'Biaya pond', pd ? pd.dasar + (G - T.dasarLembar) * pd.perLembar : 0,
+    pd ? fmt(pd.dasar, 0) + ' + (' + fmt(G, 2) + ' − ' + fmt(T.dasarLembar, 0) + ') × ' + fmt(pd.perLembar, 2) : ''));
+  // 11. lem
+  var lm = T.lem[s.lem];
+  lines.push(line('lem', 'Biaya lem', lm ? tinggi * lm * qty : 0,
+    lm ? 'tinggi ' + fmt(tinggi, 2) + ' × ' + fmt(lm, 2) + ' × ' + fmt(qty, 0) + ' pcs' : ''));
+
+  var total = 0;
+  lines.forEach(function (l) { total += l.used; });
+  var satuan = qty > 0 ? total / qty : 0;
+
+  // ---- dus bagian bawah (opsional)
+  var b = s.bawah || {};
+  var B = T.bawah;
+  function bline(key, label, auto, rumus, opt) {
+    var l = line('b_' + key, label, auto, rumus, opt);
+    l.on = !!b[key];
+    if (!l.on) l.used = 0;
+    return l;
+  }
+  var blines = [];
+  blines.push(bline('bahan', 'Biaya bahan', (rim - (mata > 0 ? (insheet / mata / B.pembagiBahan) / 500 : 0)) * harga,
+    valid ? '(' + fmt(rim, 4) + ' rim − sisa insheet) × Rp ' + fmt(harga, 0) : ''));
+  blines.push(bline('pond', 'Biaya pond', I * B.pond, fmt(I, 2) + ' lembar × ' + fmt(B.pond, 2)));
+  blines.push(bline('pisau', 'Biaya pisau', P * mata * L * B.pisau, fmt(P, 2) + ' × ' + fmt(mata, 0) + ' mata × ' + fmt(L, 2) + ' × ' + fmt(B.pisau, 2)));
+  blines.push(bline('varnish', 'Biaya varnish', P * mata * L * B.varnish * I, fmt(P, 2) + ' × ' + fmt(mata, 0) + ' × ' + fmt(L, 2) + ' × ' + fmt(B.varnish, 3) + ' × ' + fmt(I, 2) + ' lembar'));
+  blines.push(bline('lam', 'Biaya laminating', 0, 'Rumus belum ada di Excel, isi manual', { noFormula: true }));
+  blines.push(bline('spotuv', 'Biaya spot UV', 0, 'Rumus belum ada di Excel, isi manual', { noFormula: true }));
+  blines.push(bline('lem', 'Biaya lem', B.lem, 'tarif tetap'));
+
+  var btotal = 0;
+  blines.forEach(function (l) { btotal += l.used; });
+  var bsatuan = qty > 0 ? btotal / qty : 0;
+  var grand = total + (s.bawahOn ? btotal : 0);
+
+  return {
+    valid: valid, warnings: warnings,
+    lembarCetak: G, lembarInclude: I, rim: rim, lembarBahan: lembarBahan,
+    lines: lines, total: total, satuan: satuan,
+    blines: blines, btotal: btotal, bsatuan: bsatuan,
+    bawahOn: !!s.bawahOn, grand: grand,
+    grandSatuan: qty > 0 ? grand / qty : 0
+  };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { hitung: hitung, TARIF_DEFAULT: TARIF_DEFAULT, mergeTarif: mergeTarif, cloneTarif: cloneTarif };
+}
+
+var SAMPLE = {
+  customer: '', barang: 'BOX JARVIN', tanggal: '', qty: 10000,
+  bahan: 'IVORY', gsm: 300, warna: 4, panjang: 39.5, lebar: 21.6, mata: 2,
+  plano: '79 X 109 CM', qtyPlano: 10, tinggi: 50, hargaRim: 1270000, insheet: 200,
+  platefilm: 500000, mesin: 'GTO', varnish: 'NONE', lam: 'DOFT',
+  hotstamp: { on: true, p: 16, l: 4 }, embos: { on: false, p: 0, l: 0 }, spotuv: false,
+  pisau: 350000, pond: 'GTO', lem: 'UV',
+  bawahOn: true,
+  bawah: { bahan: true, pond: true, pisau: true, varnish: false, lam: true, spotuv: true, lem: true },
+  manual: {}
+};
+if (typeof module !== 'undefined' && module.exports) module.exports = { SAMPLE: SAMPLE };
+
+
+var KEY_DRAFT = 'mpk-hitungbox-draft-v1';
+var KEY_HIST = 'mpk-hitungbox-riwayat-v1';
+var KEY_TARIF = 'mpk-hitungbox-tarif-v1';
+
+var $ = function (s, r) { return (r || document).querySelector(s); };
+var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
+var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+
+function lsGet(k) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+
+function getPath(o, p) { return p.split('.').reduce(function (a, k) { return a == null ? undefined : a[k]; }, o); }
+function setPath(o, p, v) {
+  var ks = p.split('.'), last = ks.pop();
+  var t = ks.reduce(function (a, k) { if (a[k] == null || typeof a[k] !== 'object') a[k] = {}; return a[k]; }, o);
+  t[last] = v;
+}
+
+/* ---------- format ---------- */
+var nf0 = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
+var nf2 = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+var rp = function (x) { return 'Rp ' + nf0.format(Math.round(x) || 0); };
+var rp2 = function (x) { return 'Rp ' + nf2.format(x); };
+var fmtN = function (x, d) { return Number(x).toLocaleString('id-ID', { maximumFractionDigits: d }); };
+function tglPanjang(iso) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  if (!m) return '';
+  return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+function today() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+/* ---------- daftar pilihan (dari validasi data di Excel) ---------- */
+var LISTS = {
+  bahan: ['IVORY', 'DUPLEX', 'CARTON GOLD', 'ART PAPER', 'ART CARTON', 'HVS', 'SILVER'],
+  gsm: [100, 125, 150, 175, 200, 225, 250, 260, 270, 275, 300, 310, 330, 350, 400],
+  warna: [1, 2, 3, 4, 5, 6, 7, 8],
+  plano: ['79 X 109 CM', '61 X 92 CM', '65 X 100 CM', '90 X 120 CM', '65 X 109 CM', '65 X 90 CM']
+};
+$$('select[data-list]').forEach(function (sel) {
+  sel.innerHTML = LISTS[sel.dataset.list].map(function (v) {
+    return '<option value="' + v + '">' + (sel.dataset.list === 'warna' ? v + ' warna' : v) + '</option>';
+  }).join('');
+});
+
+/* ---------- state ---------- */
+function freshState() {
+  return {
+    customer: '', barang: '', tanggal: today(), qty: '',
+    bahan: 'IVORY', gsm: 300, warna: 4, panjang: '', lebar: '', mata: '',
+    plano: '79 X 109 CM', qtyPlano: '', tinggi: '', hargaRim: '', insheet: '',
+    platefilm: '', mesin: 'GTO', varnish: 'NONE', lam: 'NONE',
+    hotstamp: { on: false, p: '', l: '' }, embos: { on: false, p: '', l: '' }, spotuv: false,
+    pisau: '', pond: 'GTO', lem: 'NONE',
+    bawahOn: false,
+    bawah: { bahan: true, pond: true, pisau: true, varnish: false, lam: false, spotuv: false, lem: true },
+    manual: {}
+  };
+}
+function mergeState(base, add) {
+  var o = clone(base);
+  Object.keys(add || {}).forEach(function (k) {
+    var v = add[k];
+    if (v !== null && typeof v === 'object' && !Array.isArray(v) && o[k] && typeof o[k] === 'object') o[k] = Object.assign({}, o[k], v);
+    else o[k] = v;
+  });
+  return o;
+}
+function sampleState() { var s = clone(SAMPLE); s.tanggal = today(); return s; }
+
+var T = mergeTarif(TARIF_DEFAULT, lsGet(KEY_TARIF));
+var draft = lsGet(KEY_DRAFT);
+var S, contoh;
+if (draft && draft.s) { S = mergeState(freshState(), draft.s); contoh = false; }
+else { S = sampleState(); contoh = true; }
+var LAST = null;
+
+/* ---------- baris biaya ---------- */
+function fid(k) { return 'f-' + k.replace(/\./g, '-'); }
+function selHTML(k, label, opts) {
+  return '<select id="' + fid(k) + '" data-k="' + k + '" aria-label="' + label + '">' +
+    opts.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select>';
+}
+function boolHTML(k, label, yes, no) {
+  return '<select id="' + fid(k) + '" data-k="' + k + '" data-bool aria-label="' + label + '"><option value="1">' + yes + '</option><option value="0">' + no + '</option></select>';
+}
+function rpHTML(k, label) {
+  return '<span class="money" style="flex:1 1 11rem"><input id="' + fid(k) + '" class="num" type="number" step="any" min="0" inputmode="numeric" data-k="' + k + '" aria-label="' + label + '" placeholder="0"></span>';
+}
+function dimsHTML(k, label) {
+  return '<span data-show="' + k + '.on" style="display:contents">' +
+    '<input id="' + fid(k + '.p') + '" class="mini num" type="number" step="any" min="0" inputmode="decimal" data-k="' + k + '.p" aria-label="' + label + ' panjang (cm)" placeholder="P cm">' +
+    '<span class="times" aria-hidden="true">×</span>' +
+    '<input id="' + fid(k + '.l') + '" class="mini num" type="number" step="any" min="0" inputmode="decimal" data-k="' + k + '.l" aria-label="' + label + ' lebar (cm)" placeholder="L cm"></span>';
+}
+function rowHTML(key, label, ctl, noManual) {
+  return '<div class="row" data-row="' + key + '">' +
+    '<div class="r-label">' + label + '</div>' +
+    '<div class="r-ctl">' + ctl + '<small class="r-rumus" data-o="rumus.' + key + '"></small></div>' +
+    '<div class="r-amt"><b data-o="amt.' + key + '">—</b><em class="tag" data-o="tag.' + key + '" hidden>manual</em><span class="bar"><i data-o="bar.' + key + '"></i></span></div>' +
+    '<div class="r-man">' + (noManual ? '' : '<input id="f-manual-' + key + '" class="num" type="number" step="any" inputmode="decimal" data-k="manual.' + key + '" placeholder="manual" aria-label="Isi manual ' + label + '">') + '</div>' +
+    '</div>';
+}
+var AD = [['1', 'ADA'], ['0', 'TIDAK ADA']];
+function bawahCtl(k, label) { return boolHTML('bawah.' + k, label, 'ADA', 'TIDAK ADA'); }
+
+$('#rows-atas').innerHTML = [
+  rowHTML('bahan', 'Biaya bahan', '', false),
+  rowHTML('platefilm', 'Plate/film dan lain-lain', rpHTML('platefilm', 'Biaya plate/film dan lain-lain'), true),
+  rowHTML('cetak', 'Biaya cetak', selHTML('mesin', 'Jenis mesin cetak', [['GTO', 'GTO'], ['SORM', 'SORM'], ['NONE', 'Tanpa biaya cetak']])),
+  rowHTML('varnish', 'Biaya varnish', selHTML('varnish', 'Jenis varnish', [['UV', 'Varnish UV'], ['BIASA', 'Varnish biasa'], ['NONE', 'Tidak ada']])),
+  rowHTML('lam', 'Biaya laminating', selHTML('lam', 'Jenis laminating', [['GLOSSY', 'Glossy'], ['DOFT', 'Doft'], ['NONE', 'Tidak ada']])),
+  rowHTML('hotstamp', 'Biaya hot stamp', boolHTML('hotstamp.on', 'Hot stamp', 'Ada', 'Tidak ada') + dimsHTML('hotstamp', 'Hot stamp')),
+  rowHTML('embos', 'Biaya embos', boolHTML('embos.on', 'Embos', 'Ada', 'Tidak ada') + dimsHTML('embos', 'Embos')),
+  rowHTML('spotuv', 'Biaya spot UV', boolHTML('spotuv', 'Spot UV', 'Ada', 'Tidak ada')),
+  rowHTML('pisau', 'Biaya pisau', rpHTML('pisau', 'Biaya pisau'), true),
+  rowHTML('pond', 'Biaya pond', selHTML('pond', 'Jenis mesin pond', [['GTO', 'GTO'], ['SORM', 'SORM'], ['NONE', 'Tidak pond']])),
+  rowHTML('lem', 'Biaya lem', selHTML('lem', 'Jenis lem', [['UV', 'Lem jenis UV'], ['LAMINATING', 'Lem jenis laminating'], ['NONE', 'Tidak lem']]))
+].join('');
+
+$('#rows-bawah').innerHTML = [
+  rowHTML('b_bahan', 'Biaya bahan', bawahCtl('bahan', 'Biaya bahan bawah')),
+  rowHTML('b_pond', 'Biaya pond', bawahCtl('pond', 'Biaya pond bawah')),
+  rowHTML('b_pisau', 'Biaya pisau', bawahCtl('pisau', 'Biaya pisau bawah')),
+  rowHTML('b_varnish', 'Biaya varnish', bawahCtl('varnish', 'Biaya varnish bawah')),
+  rowHTML('b_lam', 'Biaya laminating', bawahCtl('lam', 'Biaya laminating bawah')),
+  rowHTML('b_spotuv', 'Biaya spot UV', bawahCtl('spotuv', 'Biaya spot UV bawah')),
+  rowHTML('b_lem', 'Biaya lem', bawahCtl('lem', 'Biaya lem bawah'))
+].join('');
+
+/* ---------- panel tarif ---------- */
+var TARIF_GROUPS = [
+  { t: 'Biaya cetak', f: [
+    ['cetak.GTO.dasar', 'GTO, biaya dasar (Rp)'], ['cetak.GTO.perWarna', 'GTO, per warna per lembar (Rp)'],
+    ['cetak.SORM.dasar', 'SORM, biaya dasar (Rp)'], ['cetak.SORM.perWarna', 'SORM, per warna per lembar (Rp)'],
+    ['dasarLembar', 'Lembar dasar (sudah termasuk di biaya dasar)']] },
+  { t: 'Biaya pond', f: [
+    ['pond.GTO.dasar', 'GTO, biaya dasar (Rp)'], ['pond.GTO.perLembar', 'GTO, per lembar selisih (Rp)'],
+    ['pond.SORM.dasar', 'SORM, biaya dasar (Rp)'], ['pond.SORM.perLembar', 'SORM, per lembar selisih (Rp)']] },
+  { t: 'Finishing (Rp per cm² per lembar)', f: [
+    ['varnish.UV', 'Varnish UV'], ['varnish.BIASA', 'Varnish biasa'],
+    ['laminating.GLOSSY', 'Laminating glossy'], ['laminating.DOFT', 'Laminating doft'],
+    ['hotstamp', 'Hot stamp'], ['embos', 'Embos'], ['spotuv', 'Spot UV']] },
+  { t: 'Biaya lem (Rp per satuan tinggi per pcs)', f: [
+    ['lem.UV', 'Lem jenis UV'], ['lem.LAMINATING', 'Lem jenis laminating']] },
+  { t: 'Dus bagian bawah', f: [
+    ['bawah.pond', 'Pond (Rp per lembar)'], ['bawah.pisau', 'Pisau (Rp per cm² naik cetak × mata)'],
+    ['bawah.varnish', 'Varnish (Rp per cm² per lembar)'], ['bawah.lem', 'Lem (Rp tetap)'],
+    ['bawah.pembagiBahan', 'Pembagi sisa insheet bahan']] }
+];
+$('#tarif-body').innerHTML = TARIF_GROUPS.map(function (g, gi) {
+  return '<div class="tgrp"><h3>' + g.t + '</h3><div class="tgrid">' + g.f.map(function (f) {
+    var id = 'tf-' + gi + '-' + f[0].replace(/\./g, '-');
+    return '<div class="f"><label for="' + id + '">' + f[1] + '</label><input id="' + id + '" type="number" step="any" inputmode="decimal" data-t="' + f[0] + '"></div>';
+  }).join('') + '</div></div>';
+}).join('');
+
+/* ---------- binding ---------- */
+var O = {}, ROWS = {};
+$$('[data-o]').forEach(function (el) { O[el.dataset.o] = el; });
+$$('[data-row]').forEach(function (el) { ROWS[el.dataset.row] = el; });
+function out(name, text) { if (O[name]) O[name].textContent = text; }
+
+function syncInputs() {
+  $$('[data-k]').forEach(function (el) {
+    var v = getPath(S, el.dataset.k);
+    if (el.dataset.bool !== undefined) el.value = v ? '1' : '0';
+    else el.value = (v === undefined || v === null) ? '' : v;
+  });
+  $$('[data-t]').forEach(function (el) { el.value = getPath(T, el.dataset.t); });
+}
+
+function onField(e) {
+  var el = e.target, v;
+  if (el.dataset.bool !== undefined) v = el.value === '1'; else v = el.value;
+  setPath(S, el.dataset.k, v);
+  contoh = false;
+  update();
+}
+$$('[data-k]').forEach(function (el) { el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', onField); });
+$$('[data-t]').forEach(function (el) {
+  el.addEventListener('input', function () {
+    var v = parseFloat(el.value);
+    if (!isFinite(v)) return;
+    setPath(T, el.dataset.t, v);
+    lsSet(KEY_TARIF, T);
+    update();
+  });
+});
+
+/* ---------- update tampilan ---------- */
+var tDraft;
+function update() {
+  var r = hitung(S, T);
+  LAST = r;
+  var ok = r.valid;
+
+  out('lembar', ok ? fmtN(r.lembarCetak, 2) : '—');
+  out('include', ok ? fmtN(r.lembarInclude, 2) : '—');
+  out('lembarBahan', ok ? fmtN(r.lembarBahan, 2) : '—');
+  out('rim', ok ? fmtN(r.rim, 4) : '—');
+
+  r.lines.forEach(function (l) {
+    out('amt.' + l.key, (!ok && !l.input) ? '—' : rp(l.used));
+    if (O['tag.' + l.key]) O['tag.' + l.key].hidden = l.manual === null;
+    if (O['bar.' + l.key]) O['bar.' + l.key].style.width = (ok && r.total > 0 && l.used > 0 ? Math.min(100, l.used / r.total * 100) : 0) + '%';
+    var rz = O['rumus.' + l.key];
+    if (rz) {
+      rz.className = 'r-rumus';
+      if (!ok && l.key === 'bahan') rz.textContent = 'Isi quantity, jumlah mata, dan qty/plano dulu.';
+      else if (!ok) rz.textContent = '';
+      else if (l.manual !== null) rz.textContent = 'Otomatis ' + rp(l.auto) + ', diganti nilai manual';
+      else rz.textContent = l.rumus;
+    }
+  });
+  out('total', ok ? rp(r.total) : '—');
+  out('satuan', ok ? rp2(r.satuan) : '—');
+
+  $('#bawah-body').hidden = !S.bawahOn;
+  r.blines.forEach(function (l) {
+    out('amt.' + l.key, (!ok && l.on && !l.noFormula) ? '—' : rp(l.used));
+    if (O['tag.' + l.key]) O['tag.' + l.key].hidden = !(l.on && l.manual !== null);
+    if (O['bar.' + l.key]) O['bar.' + l.key].style.width = (ok && r.btotal > 0 && l.used > 0 ? Math.min(100, l.used / r.btotal * 100) : 0) + '%';
+    if (ROWS[l.key]) ROWS[l.key].classList.toggle('off', !l.on);
+    var rz = O['rumus.' + l.key];
+    if (rz) {
+      rz.className = 'r-rumus';
+      if (!l.on) rz.textContent = '';
+      else if (l.manual !== null) rz.textContent = 'Otomatis ' + rp(l.auto) + ', diganti nilai manual';
+      else if (l.noFormula) { rz.textContent = 'Rumus belum ada di Excel. Isi manual di kolom kanan.'; rz.classList.add('warn'); }
+      else rz.textContent = ok ? l.rumus : '';
+    }
+  });
+  out('btotal', ok ? rp(r.btotal) : '—');
+  out('bsatuan', ok ? rp2(r.bsatuan) : '—');
+
+  $$('[data-show]').forEach(function (el) { el.hidden = !getPath(S, el.dataset.show); });
+
+  // ringkasan
+  var on = !!S.bawahOn;
+  $('#blk-atas').className = 'blk' + (on ? ' mid' : ' final');
+  $('#k-atas').textContent = on ? 'Dus bagian atas' : 'Total estimasi harga';
+  $('#blk-bawah').hidden = !on;
+  $('#blk-final').hidden = !on;
+  out('s-total', ok ? rp(r.total) : '—');
+  out('s-per', ok ? rp2(r.satuan) + ' / pcs' : 'Belum bisa dihitung');
+  out('s-btotal', ok ? rp(r.btotal) : '—');
+  out('s-bper', ok ? rp2(r.bsatuan) + ' / pcs' : '');
+  out('s-grand', ok ? rp(r.grand) : '—');
+  out('s-gper', ok ? rp2(r.grandSatuan) + ' / pcs' : '');
+  $('#dock-k').textContent = on ? 'Total atas + bawah' : 'Total estimasi';
+  $('#dock-v').textContent = ok ? rp(on ? r.grand : r.total) : '—';
+
+  var w = r.warnings.slice();
+  if (!ok) w.unshift('Isi quantity, jumlah mata, dan qty/plano supaya harga bisa dihitung.');
+  var we = $('#warns');
+  we.hidden = !w.length;
+  we.innerHTML = w.map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('');
+  $('#chip-tarif').hidden = JSON.stringify(T) === JSON.stringify(TARIF_DEFAULT);
+  $('#banner').hidden = !contoh;
+
+  if (!contoh) { clearTimeout(tDraft); tDraft = setTimeout(flushDraft, 250); }
+}
+function flushDraft() { clearTimeout(tDraft); if (!contoh) lsSet(KEY_DRAFT, { s: S }); }
+window.addEventListener('pagehide', flushDraft);
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flushDraft(); });
+
+/* ---------- aksi ---------- */
+var tStatus;
+function flash(msg, bad) {
+  var el = $('#status');
+  el.textContent = msg;
+  el.style.color = bad ? 'var(--cut)' : 'var(--good)';
+  clearTimeout(tStatus);
+  tStatus = setTimeout(function () { el.textContent = ''; }, 3200);
+}
+function finishingText() {
+  var a = [];
+  if (S.varnish === 'UV') a.push('varnish UV'); else if (S.varnish === 'BIASA') a.push('varnish biasa');
+  if (S.lam === 'GLOSSY') a.push('laminating glossy'); else if (S.lam === 'DOFT') a.push('laminating doft');
+  if (S.hotstamp.on) a.push('hot stamp'); if (S.embos.on) a.push('embos'); if (S.spotuv) a.push('spot UV');
+  if (S.pond !== 'NONE') a.push('pond'); if (S.lem !== 'NONE') a.push('lem');
+  return a.length ? a.join(', ') : 'tanpa finishing';
+}
+function buildText() {
+  var r = LAST, n = function (v) { return parseFloat(v) || 0; };
+  var L = ['MITRA PERKASA KEMASINDO', 'Estimasi harga box', ''];
+  if (S.customer) L.push('Customer: ' + S.customer);
+  L.push('Barang: ' + (S.barang || '-'));
+  if (tglPanjang(S.tanggal)) L.push('Tanggal: ' + tglPanjang(S.tanggal));
+  L.push('Quantity: ' + fmtN(n(S.qty), 2) + ' pcs');
+  L.push('Bahan: ' + S.bahan + ' ' + S.gsm + ' gsm, ' + S.warna + ' warna');
+  L.push('Ukuran naik cetak: ' + fmtN(n(S.panjang), 2) + ' × ' + fmtN(n(S.lebar), 2) + ' cm, ' + fmtN(n(S.mata), 0) + ' mata');
+  L.push('Plano: ' + S.plano + ', ' + fmtN(n(S.qtyPlano), 0) + ' per plano');
+  L.push('Finishing: ' + finishingText());
+  L.push('');
+  if (!r.valid) { L.push('(Harga belum bisa dihitung, lengkapi datanya)'); return L.join('\n'); }
+  L.push((S.bawahOn ? 'Dus atas: ' : 'Estimasi harga: ') + rp(r.total) + ' (' + rp2(r.satuan) + ' / pcs)');
+  if (S.bawahOn) {
+    L.push('Dus bawah: ' + rp(r.btotal) + ' (' + rp2(r.bsatuan) + ' / pcs)');
+    L.push('Total atas + bawah: ' + rp(r.grand) + ' (' + rp2(r.grandSatuan) + ' / pcs)');
+  }
+  return L.join('\n');
+}
+function copyText(text, okMsg) {
+  function manual() {
+    var ta = $('#manualcopy');
+    ta.value = text; ta.hidden = false; ta.focus(); ta.select();
+    flash('Teks sudah dipilih. Tekan Ctrl+C untuk menyalin.', true);
+  }
+  function legacy() {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+    document.body.appendChild(ta); ta.select();
+    var done = false;
+    try { done = document.execCommand('copy'); } catch (e) { done = false; }
+    document.body.removeChild(ta);
+    if (done) { $('#manualcopy').hidden = true; flash(okMsg); } else manual();
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () { $('#manualcopy').hidden = true; flash(okMsg); }, legacy);
+  } else legacy();
+}
+
+var armed = null, tArm;
+function arm(btn, idle, ask, run) {
+  if (armed === btn) { disarm(); run(); return; }
+  disarm();
+  armed = btn; btn.textContent = ask; btn.classList.add('arm');
+  tArm = setTimeout(disarm, 3000);
+  btn._idle = idle;
+}
+function disarm() {
+  clearTimeout(tArm);
+  if (armed) { armed.textContent = armed._idle; armed.classList.remove('arm'); armed = null; }
+  renderHist();
+}
+
+$('#btn-copy').addEventListener('click', function () { copyText(buildText(), 'Ringkasan tersalin.'); });
+$('#btn-new').addEventListener('click', function () {
+  var b = $('#btn-new');
+  arm(b, 'Form baru', 'Yakin kosongkan?', function () {
+    S = freshState(); contoh = false; syncInputs(); update();
+    lsSet(KEY_DRAFT, { s: S });
+    flash('Form dikosongkan.');
+    window.scrollTo(0, 0);
+  });
+});
+$('#btn-save').addEventListener('click', function () {
+  var r = LAST;
+  if (!r.valid) { flash('Lengkapi quantity, jumlah mata, dan qty/plano dulu.', true); return; }
+  var h = readHist();
+  h.unshift({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+    at: new Date().toISOString(), s: clone(S),
+    customer: S.customer, barang: S.barang, qty: parseFloat(S.qty) || 0,
+    atas: Math.round(r.total), bawah: S.bawahOn ? Math.round(r.btotal) : 0,
+    total: Math.round(S.bawahOn ? r.grand : r.total), pakaiBawah: !!S.bawahOn, bahan: S.bahan
+  });
+  if (h.length > 300) h.length = 300;
+  if (lsSet(KEY_HIST, h)) { flash('Tersimpan di riwayat.'); $('#panel-riwayat').open = true; }
+  else flash('Browser menolak penyimpanan. Pakai Salin ringkasan.', true);
+  renderHist();
+});
+
+/* ---------- riwayat ---------- */
+function readHist() { var h = lsGet(KEY_HIST); return Array.isArray(h) ? h : []; }
+function renderHist() {
+  var all = readHist();
+  $('#hist-count').textContent = all.length ? '(' + all.length + ')' : '';
+  var q = ($('#hist-q').value || '').trim().toLowerCase();
+  var h = all.filter(function (e) { return !q || (String(e.customer) + ' ' + String(e.barang)).toLowerCase().indexOf(q) >= 0; });
+  var box = $('#hist-list');
+  if (!h.length) { box.innerHTML = '<p class="empty">' + (all.length ? 'Tidak ada yang cocok.' : 'Belum ada estimasi tersimpan. Klik Simpan estimasi untuk menambahkan.') + '</p>'; return; }
+  box.innerHTML = '<table><thead><tr><th>Tanggal</th><th>Customer</th><th>Barang</th><th class="r">Qty</th><th class="r">Total</th><th></th></tr></thead><tbody>' +
+    h.map(function (e) {
+      var d = new Date(e.at);
+      var ask = armed && armed._hid === e.id;
+      return '<tr><td class="m">' + esc(d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })) + '</td>' +
+        '<td>' + esc(e.customer || '(tanpa customer)') + '</td><td>' + esc(e.barang || '-') + '</td>' +
+        '<td class="r m">' + esc(nf0.format(e.qty || 0)) + '</td><td class="r m">' + esc(rp(e.total || 0)) + '</td>' +
+        '<td class="act"><button type="button" class="btn sm" data-act="open" data-id="' + esc(e.id) + '">Buka</button> ' +
+        '<button type="button" class="btn sm' + (ask ? ' arm' : '') + '" data-act="del" data-id="' + esc(e.id) + '">' + (ask ? 'Yakin hapus?' : 'Hapus') + '</button></td></tr>';
+    }).join('') + '</tbody></table>';
+}
+$('#hist-q').addEventListener('input', renderHist);
+$('#hist-list').addEventListener('click', function (ev) {
+  var b = ev.target.closest('button[data-act]');
+  if (!b) return;
+  var id = b.dataset.id, h = readHist();
+  if (b.dataset.act === 'open') {
+    var e = h.filter(function (x) { return x.id === id; })[0];
+    if (!e) return;
+    S = mergeState(freshState(), e.s); contoh = false;
+    syncInputs(); update(); window.scrollTo(0, 0);
+    flash('Estimasi dibuka dari riwayat.');
+  } else {
+    if (armed && armed._hid === id) {
+      clearTimeout(tArm); armed = null;
+      lsSet(KEY_HIST, h.filter(function (x) { return x.id !== id; }));
+      renderHist();
+    } else {
+      disarm(); armed = { _hid: id, _idle: '', classList: { remove: function () {} }, textContent: '' };
+      tArm = setTimeout(disarm, 3000);
+      renderHist();
+    }
+  }
+});
+$('#btn-hist-copy').addEventListener('click', function () {
+  var h = readHist();
+  if (!h.length) { flash('Belum ada riwayat untuk disalin.', true); $('#panel-riwayat').open = true; return; }
+  var rows = [['Tanggal', 'Customer', 'Barang', 'Qty', 'Bahan', 'Total atas', 'Total bawah', 'Total']];
+  h.forEach(function (e) {
+    var d = new Date(e.at);
+    rows.push([d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()), e.customer || '', e.barang || '', e.qty || 0, e.bahan || '', e.atas || 0, e.bawah || 0, e.total || 0]
+      .map(function (c) { return String(c).replace(/[\t\r\n]+/g, ' '); }));
+  });
+  copyText(rows.map(function (r) { return r.join('\t'); }).join('\n'), 'Riwayat tersalin. Tempel di Excel.');
+});
+
+$('#btn-tarif-reset').addEventListener('click', function () {
+  T = cloneTarif(TARIF_DEFAULT);
+  lsSet(KEY_TARIF, T);
+  syncInputs(); update();
+});
+
+/* ---------- mulai ---------- */
+syncInputs();
+renderHist();
+update();
+})();
+</script>
+</body>
+</html>
