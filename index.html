@@ -392,6 +392,7 @@ details.panel[open] > summary { border-bottom: 1.5px dashed var(--line); }
 
         <div class="acts">
           <button type="button" class="btn pri" id="btn-save">Simpan estimasi</button>
+          <button type="button" class="btn" id="btn-pdf">Simpan PDF</button>
           <button type="button" class="btn" id="btn-copy">Salin ringkasan</button>
           <button type="button" class="btn" id="btn-new">Form baru</button>
         </div>
@@ -404,12 +405,13 @@ details.panel[open] > summary { border-bottom: 1.5px dashed var(--line); }
   <details class="panel" id="panel-riwayat">
     <summary>Riwayat estimasi <span id="hist-count"></span></summary>
     <div class="body">
+      <p class="hint" id="hist-mode" style="margin-bottom:12px"></p>
       <div class="hist-tools">
         <input id="hist-q" type="search" placeholder="Cari customer atau nama barang" aria-label="Cari riwayat">
+        <button type="button" class="btn sm" id="btn-hist-reload">Muat ulang</button>
         <button type="button" class="btn sm" id="btn-hist-copy">Salin semua untuk Excel</button>
       </div>
       <div class="hist" id="hist-list"></div>
-      <p class="hint" style="margin:12px 0 0">Riwayat tersimpan di browser ini saja. Di komputer atau browser lain, riwayatnya kosong.</p>
     </div>
   </details>
 
@@ -938,59 +940,124 @@ $('#btn-new').addEventListener('click', function () {
     window.scrollTo(0, 0);
   });
 });
-$('#btn-save').addEventListener('click', function () {
-  var r = LAST;
-  if (!r.valid) { flash('Lengkapi quantity, jumlah mata, dan qty/plano dulu.', true); return; }
-  var h = readHist();
-  h.unshift({
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-    at: new Date().toISOString(), s: clone(S),
-    customer: S.customer, barang: S.barang, qty: parseFloat(S.qty) || 0,
-    atas: Math.round(r.total), bawah: S.bawahOn ? Math.round(r.btotal) : 0,
-    total: Math.round(S.bawahOn ? r.grand : r.total), pakaiBawah: !!S.bawahOn, bahan: S.bahan
-  });
-  if (h.length > 300) h.length = 300;
-  if (lsSet(KEY_HIST, h)) { flash('Tersimpan di riwayat.'); $('#panel-riwayat').open = true; }
-  else flash('Browser menolak penyimpanan. Pakai Salin ringkasan.', true);
-  renderHist();
-});
+/* ---------- riwayat: server Vercel (Google Spreadsheet), cadangan di browser ---------- */
+var API = '/api/riwayat';
+var HIST = [], HIST_MODE = 'lokal', HIST_INFO = '';
 
-/* ---------- riwayat ---------- */
-function readHist() { var h = lsGet(KEY_HIST); return Array.isArray(h) ? h : []; }
+function readLocal() { var h = lsGet(KEY_HIST); return Array.isArray(h) ? h : []; }
+function writeLocal(h) { return lsSet(KEY_HIST, h); }
+
+function pesanGalat(e) {
+  if (e && e.name === 'TypeError') return 'server riwayat tidak terjangkau (halaman dibuka dari file, bukan dari situs Vercel)';
+  return (e && e.message) || 'tidak diketahui';
+}
+function panggil(opts, url) {
+  return fetch(url || API, opts).then(function (r) {
+    return r.json().then(function (j) { return { r: r, j: j }; }, function () {
+      throw new Error('server riwayat tidak membalas dengan benar (HTTP ' + r.status + ')');
+    });
+  }).then(function (x) {
+    if (!x.r.ok || !x.j.ok) throw new Error(x.j.pesan || ('HTTP ' + x.r.status));
+    return x.j;
+  });
+}
+function dariServer(x) {
+  return {
+    id: x.id, at: x.dibuatPada, s: x.s, customer: x.customer || '', barang: x.barang || '',
+    qty: Number(x.qty) || 0, bahan: x.bahan || '', atas: Number(x.atas) || 0, bawah: Number(x.bawah) || 0,
+    total: Number(x.total) || 0, pakaiBawah: !!x.pakaiBawah
+  };
+}
+function loadHist() {
+  HIST_INFO = 'memuat riwayat'; renderHist();
+  return panggil({ cache: 'no-store' }, API + '?limit=300').then(function (j) {
+    HIST_MODE = 'server'; HIST = j.data.map(dariServer); HIST_INFO = '';
+  }).catch(function (e) {
+    HIST_MODE = 'lokal'; HIST = readLocal(); HIST_INFO = pesanGalat(e);
+  }).then(renderHist);
+}
+
 function renderHist() {
-  var all = readHist();
-  $('#hist-count').textContent = all.length ? '(' + all.length + ')' : '';
+  var info = $('#hist-mode');
+  if (HIST_MODE === 'server') info.textContent = 'Tersimpan di server (Google Spreadsheet), terlihat di semua komputer.';
+  else if (HIST_INFO === 'memuat riwayat') info.textContent = 'Memuat riwayat dari server...';
+  else info.textContent = 'Tersimpan di browser ini saja. Server riwayat belum bisa dipakai: ' + HIST_INFO + '.';
+
+  $('#hist-count').textContent = HIST.length ? '(' + HIST.length + ')' : '';
   var q = ($('#hist-q').value || '').trim().toLowerCase();
-  var h = all.filter(function (e) { return !q || (String(e.customer) + ' ' + String(e.barang)).toLowerCase().indexOf(q) >= 0; });
+  var h = HIST.filter(function (e) { return !q || (String(e.customer) + ' ' + String(e.barang)).toLowerCase().indexOf(q) >= 0; });
   var box = $('#hist-list');
-  if (!h.length) { box.innerHTML = '<p class="empty">' + (all.length ? 'Tidak ada yang cocok.' : 'Belum ada estimasi tersimpan. Klik Simpan estimasi untuk menambahkan.') + '</p>'; return; }
+  if (!h.length) { box.innerHTML = '<p class="empty">' + (HIST.length ? 'Tidak ada yang cocok.' : 'Belum ada estimasi tersimpan. Klik Simpan estimasi untuk menambahkan.') + '</p>'; return; }
   box.innerHTML = '<table><thead><tr><th>Tanggal</th><th>Customer</th><th>Barang</th><th class="r">Qty</th><th class="r">Total</th><th></th></tr></thead><tbody>' +
     h.map(function (e) {
       var d = new Date(e.at);
+      var tgl = isNaN(d.getTime()) ? '-' : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
       var ask = armed && armed._hid === e.id;
-      return '<tr><td class="m">' + esc(d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })) + '</td>' +
+      return '<tr><td class="m">' + esc(tgl) + '</td>' +
         '<td>' + esc(e.customer || '(tanpa customer)') + '</td><td>' + esc(e.barang || '-') + '</td>' +
         '<td class="r m">' + esc(nf0.format(e.qty || 0)) + '</td><td class="r m">' + esc(rp(e.total || 0)) + '</td>' +
         '<td class="act"><button type="button" class="btn sm" data-act="open" data-id="' + esc(e.id) + '">Buka</button> ' +
         '<button type="button" class="btn sm' + (ask ? ' arm' : '') + '" data-act="del" data-id="' + esc(e.id) + '">' + (ask ? 'Yakin hapus?' : 'Hapus') + '</button></td></tr>';
     }).join('') + '</tbody></table>';
 }
+
+function entriBaru() {
+  var r = LAST;
+  return {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    at: new Date().toISOString(), s: clone(S),
+    customer: S.customer, barang: S.barang, qty: parseFloat(S.qty) || 0,
+    atas: Math.round(r.total), bawah: S.bawahOn ? Math.round(r.btotal) : 0,
+    total: Math.round(S.bawahOn ? r.grand : r.total), pakaiBawah: !!S.bawahOn, bahan: S.bahan
+  };
+}
+function simpanLokal(e) {
+  var h = readLocal(); h.unshift(e);
+  if (h.length > 300) h.length = 300;
+  return writeLocal(h) ? h : null;
+}
+
+$('#btn-save').addEventListener('click', function () {
+  if (!LAST.valid) { flash('Lengkapi quantity, jumlah mata, dan qty/plano dulu.', true); return; }
+  var btn = $('#btn-save'), e = entriBaru();
+  btn.disabled = true;
+  var p = HIST_MODE === 'server'
+    ? panggil({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aksi: 'simpan', entry: e }) })
+    : Promise.reject(new Error('lokal'));
+  p.then(function () {
+    flash('Tersimpan di server.');
+    $('#panel-riwayat').open = true;
+    return loadHist();
+  }).catch(function (err) {
+    var h = simpanLokal(e);
+    HIST_MODE = 'lokal'; HIST = readLocal();
+    if (err.message !== 'lokal') HIST_INFO = pesanGalat(err);
+    if (h) { flash(err.message === 'lokal' ? 'Tersimpan di browser ini.' : 'Server gagal: ' + pesanGalat(err) + '. Disimpan di browser ini saja.', err.message !== 'lokal'); $('#panel-riwayat').open = true; }
+    else flash('Gagal menyimpan. Pakai Simpan PDF atau Salin ringkasan.', true);
+    renderHist();
+  }).then(function () { btn.disabled = false; });
+});
+
 $('#hist-q').addEventListener('input', renderHist);
+$('#btn-hist-reload').addEventListener('click', function () { loadHist(); });
 $('#hist-list').addEventListener('click', function (ev) {
   var b = ev.target.closest('button[data-act]');
   if (!b) return;
-  var id = b.dataset.id, h = readHist();
+  var id = b.dataset.id;
   if (b.dataset.act === 'open') {
-    var e = h.filter(function (x) { return x.id === id; })[0];
+    var e = HIST.filter(function (x) { return x.id === id; })[0];
     if (!e) return;
+    if (!e.s) { flash('Data estimasi ini tidak lengkap, tidak bisa dibuka.', true); return; }
     S = mergeState(freshState(), e.s); contoh = false;
     syncInputs(); update(); window.scrollTo(0, 0);
     flash('Estimasi dibuka dari riwayat.');
   } else {
     if (armed && armed._hid === id) {
       clearTimeout(tArm); armed = null;
-      lsSet(KEY_HIST, h.filter(function (x) { return x.id !== id; }));
-      renderHist();
+      var hapus = HIST_MODE === 'server'
+        ? panggil({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aksi: 'hapus', id: id }) }).then(loadHist)
+        : Promise.resolve().then(function () { writeLocal(readLocal().filter(function (x) { return x.id !== id; })); HIST = readLocal(); renderHist(); });
+      hapus.catch(function (err) { flash('Gagal menghapus: ' + pesanGalat(err), true); renderHist(); });
     } else {
       disarm(); armed = { _hid: id, _idle: '', classList: { remove: function () {} }, textContent: '' };
       tArm = setTimeout(disarm, 3000);
@@ -999,15 +1066,170 @@ $('#hist-list').addEventListener('click', function (ev) {
   }
 });
 $('#btn-hist-copy').addEventListener('click', function () {
-  var h = readHist();
+  var h = HIST;
   if (!h.length) { flash('Belum ada riwayat untuk disalin.', true); $('#panel-riwayat').open = true; return; }
   var rows = [['Tanggal', 'Customer', 'Barang', 'Qty', 'Bahan', 'Total atas', 'Total bawah', 'Total']];
   h.forEach(function (e) {
     var d = new Date(e.at);
-    rows.push([d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()), e.customer || '', e.barang || '', e.qty || 0, e.bahan || '', e.atas || 0, e.bawah || 0, e.total || 0]
+    var tgl = isNaN(d.getTime()) ? '' : d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    rows.push([tgl, e.customer || '', e.barang || '', e.qty || 0, e.bahan || '', e.atas || 0, e.bawah || 0, e.total || 0]
       .map(function (c) { return String(c).replace(/[\t\r\n]+/g, ' '); }));
   });
   copyText(rows.map(function (r) { return r.join('\t'); }).join('\n'), 'Riwayat tersalin. Tempel di Excel.');
+});
+
+/* ---------- simpan PDF (jsPDF dimuat dari situs sendiri saat pertama dipakai) ---------- */
+function muatSkrip(src) {
+  return new Promise(function (ok, gagal) {
+    var el = document.createElement('script');
+    el.src = src; el.onload = ok; el.onerror = function () { gagal(new Error('gagal memuat ' + src)); };
+    document.head.appendChild(el);
+  });
+}
+function ambilJsPDF() {
+  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  return muatSkrip('/vendor/jspdf.umd.min.js').then(function () { return window.jspdf.jsPDF; });
+}
+function ket(key) {
+  var yt = function (b, y, t) { return b ? y : t; };
+  var dim = function (o) { return o.on ? 'Ada, ' + fmtN(parseFloat(o.p) || 0, 2) + ' x ' + fmtN(parseFloat(o.l) || 0, 2) + ' cm' : 'Tidak ada'; };
+  switch (key) {
+    case 'bahan': return fmtN(LAST.rim, 4) + ' rim x ' + rp(parseFloat(S.hargaRim) || 0);
+    case 'cetak': return S.mesin === 'NONE' ? 'Tanpa biaya cetak' : S.mesin + ', ' + S.warna + ' warna';
+    case 'varnish': return { UV: 'Varnish UV', BIASA: 'Varnish biasa', NONE: 'Tidak ada' }[S.varnish];
+    case 'lam': return { GLOSSY: 'Glossy', DOFT: 'Doft', NONE: 'Tidak ada' }[S.lam];
+    case 'hotstamp': return dim(S.hotstamp);
+    case 'embos': return dim(S.embos);
+    case 'spotuv': return yt(S.spotuv, 'Ada', 'Tidak ada');
+    case 'pond': return S.pond === 'NONE' ? 'Tidak pond' : S.pond;
+    case 'lem': return { UV: 'Lem jenis UV', LAMINATING: 'Lem jenis laminating', NONE: 'Tidak lem' }[S.lem];
+    default: return '';
+  }
+}
+function buatPDF(jsPDF) {
+  var r = LAST, doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  var W = 210, M = 15, y = 0;
+  var NAVY = [10, 27, 54], LIME = [164, 232, 48], INK = [20, 30, 42], MUTED = [92, 104, 118], LINE = [208, 214, 222], BIRU = [10, 103, 168];
+  var fill = function (c) { doc.setFillColor(c[0], c[1], c[2]); };
+  var tint = function (c) { doc.setTextColor(c[0], c[1], c[2]); };
+  var garis = function (c) { doc.setDrawColor(c[0], c[1], c[2]); };
+  function ensure(h) { if (y + h > 280) { doc.addPage(); y = 18; } }
+
+  // kepala
+  fill(NAVY); doc.rect(0, 0, W, 26, 'F');
+  fill(LIME); doc.rect(0, 26, W, 1.2, 'F');
+  var cx = M;
+  [[0, 166, 224], [228, 0, 124], [255, 230, 0], [27, 27, 27]].forEach(function (c) { doc.setFillColor(c[0], c[1], c[2]); doc.rect(cx, 8, 3, 10, 'F'); cx += 3.5; });
+  tint([255, 255, 255]); doc.setFont('helvetica', 'bold'); doc.setFontSize(17);
+  doc.text('MITRA PERKASA KEMASINDO', M + 17, 15);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); tint([185, 202, 224]);
+  doc.text('FORM ESTIMASI HARGA BOX', M + 17, 21);
+  y = 36;
+
+  function bagian(judul) {
+    ensure(14);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); tint(BIRU);
+    doc.text(judul.toUpperCase(), M, y);
+    garis(LINE); doc.setLineWidth(0.3); doc.line(M, y + 1.8, W - M, y + 1.8);
+    y += 7;
+  }
+  function kv(pasang) {
+    for (var i = 0; i < pasang.length; i += 2) {
+      ensure(6);
+      [0, 1].forEach(function (k) {
+        var p = pasang[i + k]; if (!p) return;
+        var x = M + k * 96;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); tint(MUTED); doc.text(p[0], x, y);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); tint(INK);
+        doc.text(doc.splitTextToSize(String(p[1] === '' ? '-' : p[1]), k ? 44 : 52)[0], x + 40, y);
+      });
+      y += 6;
+    }
+    y += 2;
+  }
+  function tabel(baris) {
+    baris.forEach(function (b) {
+      var teks = doc.splitTextToSize(b.ket || '', 78);
+      var h = Math.max(6.4, 2.6 + teks.length * 3.9);
+      ensure(h);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); tint(INK); doc.text(b.label, M, y + 1);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); tint(MUTED); doc.text(teks, M + 50, y + 1);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); tint(INK); doc.text(b.amt, W - M, y + 1, { align: 'right' });
+      garis(LINE); doc.setLineWidth(0.15); doc.line(M, y + h - 3, W - M, y + h - 3);
+      y += h;
+    });
+  }
+  function jumlah(label, nilai, besar) {
+    ensure(9);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(besar ? 11 : 9.5); tint(INK);
+    doc.text(label, M, y + 3);
+    doc.setFontSize(besar ? 13 : 10); doc.text(nilai, W - M, y + 3, { align: 'right' });
+    y += besar ? 9 : 7;
+  }
+  var f2 = function (v) { return fmtN(parseFloat(v) || 0, 2); };
+
+  bagian('Data order');
+  kv([['Customer', S.customer], ['Tanggal', tglPanjang(S.tanggal)],
+      ['Nama barang', S.barang], ['Quantity', f2(S.qty) + ' pcs']]);
+
+  bagian('Bahan dan ukuran');
+  kv([['Bahan', S.bahan + ' ' + S.gsm + ' gsm'], ['Warna', S.warna + ' warna'],
+      ['Ukuran naik cetak', f2(S.panjang) + ' x ' + f2(S.lebar) + ' cm'], ['Jumlah mata', f2(S.mata)],
+      ['Ukuran plano', S.plano], ['Qty / plano', f2(S.qtyPlano)],
+      ['Tinggi cetakan', f2(S.tinggi)], ['Harga bahan per rim', rp(parseFloat(S.hargaRim) || 0)]]);
+
+  bagian('Kebutuhan bahan');
+  kv([['Lembar cetak', fmtN(r.lembarCetak, 2)], ['Total include inside', fmtN(r.lembarInclude, 2)],
+      ['Kebutuhan lembar bahan', fmtN(r.lembarBahan, 2)], ['Jumlah rim', fmtN(r.rim, 4)]]);
+
+  bagian('Rincian biaya dus atas');
+  tabel(r.lines.filter(function (l) { return l.used !== 0; }).map(function (l) {
+    return { label: l.label, ket: ket(l.key) + (l.manual !== null ? ' (manual)' : ''), amt: rp(l.used) };
+  }));
+  y += 2;
+  jumlah('Estimasi harga dus atas', rp(r.total), true);
+  jumlah('Satuan (per pcs)', rp2(r.satuan), false);
+
+  if (S.bawahOn) {
+    y += 6;
+    bagian('Rincian biaya dus bawah');
+    tabel(r.blines.filter(function (l) { return l.on && l.used !== 0; }).map(function (l) {
+      return { label: l.label, ket: l.manual !== null ? '(manual)' : '', amt: rp(l.used) };
+    }));
+    y += 2;
+    jumlah('Estimasi harga dus bawah', rp(r.btotal), true);
+    jumlah('Satuan (per pcs)', rp2(r.bsatuan), false);
+
+    ensure(24); y += 4;
+    fill(LIME); doc.rect(M, y, W - 2 * M, 18, 'F');
+    tint(NAVY); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text('TOTAL HARGA ATAS + BAWAH', M + 5, y + 6.5);
+    doc.setFontSize(16); doc.text(rp(r.grand), M + 5, y + 14);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+    doc.text(rp2(r.grandSatuan) + ' / pcs', W - M - 5, y + 14, { align: 'right' });
+    y += 20;
+  }
+
+  var n = doc.getNumberOfPages(), waktu = new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+  for (var i = 1; i <= n; i++) {
+    doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); tint(MUTED);
+    doc.text('Mitra Perkasa Kemasindo - estimasi harga box, dibuat ' + waktu, M, 290);
+    doc.text('Halaman ' + i + ' dari ' + n, W - M, 290, { align: 'right' });
+  }
+  var slug = (S.barang || 'estimasi').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'estimasi';
+  return { doc: doc, nama: 'Estimasi_' + slug + '_' + (S.tanggal || today()) + '.pdf' };
+}
+$('#btn-pdf').addEventListener('click', function () {
+  if (!LAST.valid) { flash('Lengkapi quantity, jumlah mata, dan qty/plano dulu.', true); return; }
+  var btn = $('#btn-pdf'); btn.disabled = true;
+  ambilJsPDF().then(function (J) {
+    var p = buatPDF(J);
+    p.doc.save(p.nama);
+    flash('PDF tersimpan: ' + p.nama);
+  }).catch(function (e) {
+    flash('Gagal membuat PDF (' + (e && e.message) + '). Dibuka lewat cetak, pilih Save as PDF.', true);
+    setTimeout(function () { window.print(); }, 400);
+  }).then(function () { btn.disabled = false; });
 });
 
 $('#btn-tarif-reset').addEventListener('click', function () {
@@ -1018,8 +1240,10 @@ $('#btn-tarif-reset').addEventListener('click', function () {
 
 /* ---------- mulai ---------- */
 syncInputs();
+HIST = readLocal();
 renderHist();
 update();
+loadHist();
 })();
 </script>
 </body>
